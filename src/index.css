@@ -1,0 +1,231 @@
+/* 全局样式重置 */
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f5f5f5;
+  color: #333;
+  line-height: 1.5;
+  height: 100%;
+  overflow-x: hidden;
+  position: relative;
+}
+
+#root {
+  min-height: 100vh;
+  width: 100%;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  body {
+    font-size: 14px;
+  }
+  
+  /* 移动端滚动优化 */
+  body {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* 移动端点击高亮去除 */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Antd 组件样式覆盖 */
+.ant-card {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.ant-btn {
+  border-radius: 6px;
+}
+
+.ant-input, .ant-input-password {
+  border-radius: 6px;
+}
+
+.ant-select-selector {
+  border-radius: 6px !important;
+}
+
+.ant-upload-drag {
+  border-radius: 8px;
+}
+
+/* 移动端 Tabs 优化 */
+@media (max-width: 768px) {
+  .ant-tabs-nav {
+    margin: 0;
+  }
+  
+  .ant-tabs-tab {
+    margin: 0 !important;
+    padding: 12px 8px !important;
+  }
+  
+  .ant-tabs-ink-bar {
+    height: 3px;
+  }
+}
+
+/* 图片懒加载优化 */
+.ant-image {
+  transition: opacity 0.3s;
+}
+
+.ant-image-img {
+  transition: transform 0.3s;
+}
+
+.ant-image:hover .ant-image-img {
+  transform: scale(1.05);
+}
+
+/* 列表项优化 */
+.ant-list-item {
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+@media (max-width: 768px) {
+  .ant-list-item {
+    padding: 8px 12px;
+  }
+}
+
+/* 模态框移动端适配 */
+@media (max-width: 768px) {
+  .ant-modal {
+    margin: 16px;
+    max-width: calc(100vw - 32px);
+  }
+  
+  .ant-modal-content {
+    border-radius: 12px;
+  }
+}
+
+/* 上传组件优化 */
+.ant-upload-drag {
+  background: #fafafa;
+  border: 2px dashed #d9d9d9;
+  transition: all 0.3s;
+}
+
+.ant-upload-drag:hover {
+  border-color: #1890ff;
+  background: #f0f8ff;
+}
+
+.ant-upload-drag.ant-upload-drag-hover {
+  border-color: #1890ff;
+  background: #f0f8ff;
+}
+
+/* 加载状态优化 */
+.ant-spin-container {
+  min-height: 200px;
+}
+
+/* 空状态优化 */
+.ant-empty {
+  padding: 40px 20px;
+}
+
+@media (max-width: 768px) {
+  .ant-empty {
+    padding: 30px 15px;
+  }
+  
+  .ant-empty-description {
+    font-size: 14px;
+  }
+}
+
+/* 标签优化 */
+.ant-tag {
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+/* 按钮组优化 */
+.ant-space {
+  flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+  .ant-space-item {
+    margin-bottom: 8px;
+  }
+}
+
+/* 表单优化 */
+.ant-form-item {
+  margin-bottom: 20px;
+}
+
+@media (max-width: 768px) {
+  .ant-form-item {
+    margin-bottom: 16px;
+  }
+  
+  .ant-form-item-label {
+    padding-bottom: 4px;
+  }
+}
+
+/* 卡片网格优化 */
+.ant-card-small .ant-card-body {
+  padding: 12px;
+}
+
+.ant-card-small .ant-card-actions {
+  background: #fafafa;
+}
+
+.ant-card-small .ant-card-actions > li {
+  margin: 4px 0;
+}
+
+/* 搜索框优化 */
+.ant-input-search .ant-input-group .ant-input-affix-wrapper {
+  border-radius: 6px 0 0 6px;
+}
+
+.ant-input-search .ant-input-search-button {
+  border-radius: 0 6px 6px 0;
+}
+
+/* 滚动条优化 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}

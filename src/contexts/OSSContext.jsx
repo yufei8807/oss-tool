@@ -1,0 +1,292 @@
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import OSS from 'ali-oss';
+import { message } from 'antd';
+
+const OSSContext = createContext();
+
+export const useOSS = () => {
+  const context = useContext(OSSContext);
+  if (!context) {
+    throw new Error('useOSS must be used within an OSSProvider');
+  }
+  return context;
+};
+
+export const OSSProvider = ({ children }) => {
+  const [ossClient, setOssClient] = useState(null);
+  const [ossConfigs, setOssConfigs] = useState([]);
+  const [currentConfigId, setCurrentConfigId] = useState(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // 获取当前活跃配置
+  const currentConfig = ossConfigs.find(config => config.id === currentConfigId) || {
+    id: null,
+    name: '',
+    region: '',
+    accessKeyId: '',
+    accessKeySecret: '',
+    bucket: '',
+    endpoint: ''
+  };
+
+  // 从localStorage加载配置
+  useEffect(() => {
+    const savedConfigs = localStorage.getItem('ossConfigs');
+    const savedCurrentId = localStorage.getItem('currentOssConfigId');
+    
+    if (savedConfigs) {
+      try {
+        const configs = JSON.parse(savedConfigs);
+        setOssConfigs(configs);
+        
+        if (savedCurrentId && configs.find(c => c.id === savedCurrentId)) {
+          setCurrentConfigId(savedCurrentId);
+          const activeConfig = configs.find(c => c.id === savedCurrentId);
+          if (activeConfig && activeConfig.accessKeyId && activeConfig.accessKeySecret && activeConfig.bucket) {
+            initOSSClient(activeConfig);
+          }
+        } else if (configs.length > 0) {
+          // 如果没有保存的当前配置ID，使用第一个配置
+          setCurrentConfigId(configs[0].id);
+          if (configs[0].accessKeyId && configs[0].accessKeySecret && configs[0].bucket) {
+            initOSSClient(configs[0]);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to parse saved OSS configs:', error);
+      }
+    }
+  }, []);
+
+  // 初始化OSS客户端
+  const initOSSClient = async (config) => {
+    try {
+      setLoading(true);
+      const client = new OSS({
+        region: config.region || 'oss-cn-hangzhou',
+        accessKeyId: config.accessKeyId,
+        accessKeySecret: config.accessKeySecret,
+        bucket: config.bucket,
+        endpoint: config.endpoint
+      });
+      
+      // 测试连接
+      await client.listV2({
+        'max-keys': 1
+      });
+      
+      setOssClient(client);
+      setIsConnected(true);
+      message.success('OSS连接成功');
+    } catch (error) {
+      console.error('OSS connection failed:', error);
+      setIsConnected(false);
+      message.error('OSS连接失败: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 生成唯一ID
+  const generateId = () => {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2);
+  };
+
+  // 保存配置列表到localStorage
+  const saveConfigsToStorage = (configs, currentId) => {
+    localStorage.setItem('ossConfigs', JSON.stringify(configs));
+    if (currentId) {
+      localStorage.setItem('currentOssConfigId', currentId);
+    }
+  };
+
+  // 添加新配置
+  const addConfig = (config) => {
+    const newConfig = {
+      ...config,
+      id: generateId(),
+      name: config.name || `配置 ${ossConfigs.length + 1}`
+    };
+    const newConfigs = [...ossConfigs, newConfig];
+    setOssConfigs(newConfigs);
+    saveConfigsToStorage(newConfigs, newConfig.id);
+    setCurrentConfigId(newConfig.id);
+    
+    if (newConfig.accessKeyId && newConfig.accessKeySecret && newConfig.bucket) {
+      initOSSClient(newConfig);
+    }
+    return newConfig.id;
+  };
+
+  // 更新配置
+  const updateConfig = (configId, config) => {
+    const newConfigs = ossConfigs.map(c => 
+      c.id === configId ? { ...c, ...config } : c
+    );
+    setOssConfigs(newConfigs);
+    saveConfigsToStorage(newConfigs, currentConfigId);
+    
+    // 如果更新的是当前配置，重新初始化客户端
+    if (configId === currentConfigId) {
+      const updatedConfig = newConfigs.find(c => c.id === configId);
+      if (updatedConfig && updatedConfig.accessKeyId && updatedConfig.accessKeySecret && updatedConfig.bucket) {
+        initOSSClient(updatedConfig);
+      }
+    }
+  };
+
+  // 删除配置
+  const deleteConfig = (configId) => {
+    const newConfigs = ossConfigs.filter(c => c.id !== configId);
+    setOssConfigs(newConfigs);
+    
+    if (configId === currentConfigId) {
+      const newCurrentId = newConfigs.length > 0 ? newConfigs[0].id : null;
+      setCurrentConfigId(newCurrentId);
+      setOssClient(null);
+      setIsConnected(false);
+      
+      if (newCurrentId) {
+        const newCurrentConfig = newConfigs[0];
+        if (newCurrentConfig.accessKeyId && newCurrentConfig.accessKeySecret && newCurrentConfig.bucket) {
+          initOSSClient(newCurrentConfig);
+        }
+      }
+      saveConfigsToStorage(newConfigs, newCurrentId);
+    } else {
+      saveConfigsToStorage(newConfigs, currentConfigId);
+    }
+  };
+
+  // 切换配置
+  const switchConfig = (configId) => {
+    setCurrentConfigId(configId);
+    localStorage.setItem('currentOssConfigId', configId);
+    
+    const config = ossConfigs.find(c => c.id === configId);
+    if (config && config.accessKeyId && config.accessKeySecret && config.bucket) {
+      initOSSClient(config);
+    } else {
+      setOssClient(null);
+      setIsConnected(false);
+    }
+  };
+
+  // 兼容旧版本的保存配置方法
+  const saveConfig = (config) => {
+    if (currentConfigId) {
+      updateConfig(currentConfigId, config);
+    } else {
+      addConfig(config);
+    }
+  };
+
+  // 上传文件
+  const uploadFile = async (file, path) => {
+    if (!ossClient) {
+      throw new Error('OSS客户端未初始化');
+    }
+    
+    try {
+      const result = await ossClient.put(path, file);
+      return result;
+    } catch (error) {
+      console.error('Upload failed:', error);
+      throw error;
+    }
+  };
+
+  // 删除文件
+  const deleteFile = async (path) => {
+    if (!ossClient) {
+      throw new Error('OSS客户端未初始化');
+    }
+    
+    try {
+      const result = await ossClient.delete(path);
+      return result;
+    } catch (error) {
+      console.error('Delete failed:', error);
+      throw error;
+    }
+  };
+
+  // 获取文件列表
+  const listFiles = async (prefix = '', maxKeys = 100) => {
+    if (!ossClient) {
+      throw new Error('OSS客户端未初始化');
+    }
+    
+    try {
+      const result = await ossClient.listV2({
+        prefix,
+        'max-keys': maxKeys
+      });
+      return result.objects || [];
+    } catch (error) {
+      console.error('List files failed:', error);
+      throw error;
+    }
+  };
+
+  // 获取文件URL
+  const getFileUrl = (path, expires = 3600) => {
+    if (!ossClient) {
+      throw new Error('OSS客户端未初始化');
+    }
+    
+    try {
+      return ossClient.signatureUrl(path, { expires });
+    } catch (error) {
+      console.error('Get file URL failed:', error);
+      throw error;
+    }
+  };
+
+  // 下载文件
+  const downloadFile = async (path, filename) => {
+    if (!ossClient) {
+      throw new Error('OSS客户端未初始化');
+    }
+    
+    try {
+      const url = getFileUrl(path);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename || path.split('/').pop();
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Download failed:', error);
+      throw error;
+    }
+  };
+
+  const value = {
+    ossClient,
+    ossConfig: currentConfig, // 兼容旧版本
+    ossConfigs,
+    currentConfigId,
+    currentConfig,
+    isConnected,
+    loading,
+    saveConfig,
+    addConfig,
+    updateConfig,
+    deleteConfig,
+    switchConfig,
+    uploadFile,
+    deleteFile,
+    listFiles,
+    getFileUrl,
+    downloadFile
+  };
+
+  return (
+    <OSSContext.Provider value={value}>
+      {children}
+    </OSSContext.Provider>
+  );
+};
