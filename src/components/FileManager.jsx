@@ -143,9 +143,9 @@ const FileManager = () => {
   }
 
   return (
-    <div style={{ padding: '16px' }}>
-      {/* 上传区域 */}
-      <Card title="文件上传" style={{ marginBottom: '16px' }}>
+    <div style={{ padding: '0' }}>
+              {/* 上传区域 */}
+        <Card title="文件上传" style={{ marginBottom: '12px' }}>
         <Dragger
           beforeUpload={handleUpload}
           showUploadList={false}
@@ -164,28 +164,27 @@ const FileManager = () => {
         </Dragger>
       </Card>
 
+      {/* 操作栏 */}
+      <Card style={{ marginBottom: '12px' }}>
+        <Space size="large" className="file-manager-toolbar" style={{ width: '100%', justifyContent: 'flex-start', alignItems: 'center' }}>
+          <Search
+            placeholder="搜索文件"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            prefix={<SearchOutlined />}
+          />
+          <Button 
+            icon={<ReloadOutlined />} 
+            onClick={fetchFiles}
+            loading={loading}
+            title="刷新"
+            style={{ flexShrink: 0 }}
+          />
+        </Space>
+      </Card>
+
       {/* 文件列表 */}
-      <Card 
-        title="文件列表" 
-        extra={
-          <Space>
-            <Search
-              placeholder="搜索文件"
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              style={{ width: 200 }}
-              prefix={<SearchOutlined />}
-            />
-            <Button 
-              icon={<ReloadOutlined />} 
-              onClick={fetchFiles}
-              loading={loading}
-            >
-              刷新
-            </Button>
-          </Space>
-        }
-      >
+      <Card title="文件列表" className="file-list-card">
         <Spin spinning={loading}>
           {filteredFiles.length === 0 ? (
             <Empty description="暂无文件" />

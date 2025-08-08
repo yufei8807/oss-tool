@@ -158,7 +158,7 @@ const Gallery = () => {
   }
 
   return (
-    <div style={{ padding: '16px' }}>
+    <div style={{ padding: '0' }}>
       {/* 操作栏 */}
       <Card style={{ marginBottom: '16px' }}>
         <Space style={{ width: '100%', justifyContent: 'space-between' }}>

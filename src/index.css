@@ -9,19 +9,112 @@ html, body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f5f5f5;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #f5576c 75%, #4facfe 100%);
+  background-attachment: fixed;
   color: #333;
   line-height: 1.5;
   height: 100%;
-  overflow-x: hidden;
+  overflow: hidden; /* 禁用body的滚动条 */
+  overflow-x: hidden; /* 强制禁用水平滚动 */
   position: relative;
 }
 
 #root {
   min-height: 100vh;
+  min-height: 100dvh; /* 使用动态视口高度，适配移动端 */
   width: 100%;
   position: relative;
   overflow-x: hidden;
+}
+
+/* 现代化组件样式 */
+.ant-card {
+  background: rgba(255, 255, 255, 0.95) !important; /* 提高不透明度 */
+  -webkit-backdrop-filter: blur(10px) !important; /* 减少模糊度 */
+  backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08) !important;
+  border-radius: 16px !important;
+  /* 优化渲染性能 */
+  -webkit-transform: translateZ(0) !important;
+  transform: translateZ(0) !important;
+  will-change: auto !important;
+}
+
+.ant-card:hover {
+  -webkit-transform: translateZ(0) translateY(-1px) !important;
+  transform: translateZ(0) translateY(-1px) !important;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12) !important;
+  transition: all 0.2s ease;
+}
+
+/* 主要按钮样式在下面统一定义 */
+
+.ant-input,
+.ant-input-password,
+.ant-input-affix-wrapper {
+  background: rgba(255, 255, 255, 0.95) !important; /* 提高不透明度 */
+  border: 1px solid rgba(102, 126, 234, 0.3) !important; /* 默认就有可见边框 */
+  border-radius: 12px !important;
+  transition: all 0.2s ease !important;
+  /* 优化渲染性能 */
+  -webkit-transform: translateZ(0) !important;
+  transform: translateZ(0) !important;
+}
+
+/* 确保内部input元素完全透明，不显示边框 */
+.ant-input-affix-wrapper > .ant-input {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  padding: 0 !important;
+}
+
+/* 移除所有默认的聚焦轮廓 */
+.ant-input,
+.ant-input-password,
+.ant-input-affix-wrapper {
+  outline: none !important;
+}
+
+/* 悬停状态 */
+.ant-input:hover,
+.ant-input-password:hover,
+.ant-input-affix-wrapper:hover {
+  border-color: rgba(102, 126, 234, 0.5) !important;
+}
+
+/* 统一的聚焦样式 */
+.ant-input:focus,
+.ant-input-password:focus,
+.ant-input-affix-wrapper:focus,
+.ant-input-affix-wrapper-focused,
+.ant-input-affix-wrapper:focus-within,
+.ant-input-affix-wrapper.ant-input-affix-wrapper-focused {
+  border-color: #667eea !important;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2) !important;
+  outline: none !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+}
+
+/* 确保内部input元素在所有状态下都没有额外样式 */
+.ant-input-affix-wrapper > .ant-input,
+.ant-input-affix-wrapper:hover > .ant-input,
+.ant-input-affix-wrapper:focus > .ant-input,
+.ant-input-affix-wrapper-focused > .ant-input,
+.ant-input-affix-wrapper:focus-within > .ant-input {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* 移除所有可能的聚焦轮廓 */
+.ant-input:focus-visible,
+.ant-input-password:focus-visible,
+.ant-input-affix-wrapper:focus-visible {
+  outline: none !important;
 }
 
 /* 移动端适配 */
@@ -32,7 +125,7 @@ html, body {
   
   /* 移动端滚动优化 */
   body {
-    -webkit-overflow-scrolling: touch;
+    /* -webkit-overflow-scrolling: touch; */ /* 已废弃，现代浏览器自动优化 */
   }
   
   /* 移动端点击高亮去除 */
@@ -41,26 +134,281 @@ html, body {
   }
 }
 
-/* Antd 组件样式覆盖 */
-.ant-card {
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
+/* 其他组件样式 */
 .ant-btn {
-  border-radius: 6px;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+  border: 1px solid rgba(102, 126, 234, 0.3) !important;
+  background: rgba(255, 255, 255, 0.95) !important; /* 提高不透明度 */
+  /* 优化渲染性能 */
+  -webkit-transform: translateZ(0) !important;
+  transform: translateZ(0) !important;
 }
 
-.ant-input, .ant-input-password {
-  border-radius: 6px;
+.ant-btn:hover {
+  border-color: rgba(102, 126, 234, 0.5) !important;
+  background: rgba(255, 255, 255, 0.98) !important;
+  -webkit-transform: translateZ(0) translateY(-1px) !important;
+  transform: translateZ(0) translateY(-1px) !important;
+  box-shadow: 0 2px 12px rgba(102, 126, 234, 0.15) !important;
+}
+
+/* 确保主要按钮保持原有的渐变样式 */
+.ant-btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  border: none !important;
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3) !important;
+}
+
+.ant-btn-primary:hover {
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%) !important;
+  box-shadow: 0 6px 24px rgba(102, 126, 234, 0.4) !important;
+  transform: translateY(-1px);
 }
 
 .ant-select-selector {
-  border-radius: 6px !important;
+  border-radius: 12px !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(102, 126, 234, 0.3) !important;
+}
+
+/* 搜索框样式 - 修复分离问题 */
+.ant-input-search {
+  display: inline-block !important;
+  vertical-align: top !important;
+  position: relative !important;
+  z-index: 1 !important;
+  width: 250px !important; /* 固定宽度，防止影响其他元素 */
+}
+
+.ant-input-search .ant-input-group {
+  display: flex !important;
+  width: 100% !important;
+  position: relative !important;
+}
+
+.ant-input-search .ant-input-affix-wrapper {
+  border-top-right-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  border-right: none !important;
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+
+.ant-input-search > .ant-input-group > .ant-input-group-addon {
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+  flex-shrink: 0 !important;
+  display: flex !important;
+  align-items: stretch !important;
+  width: auto !important;
+  position: relative !important;
+}
+
+.ant-input-search > .ant-input-group > .ant-input-group-addon > .ant-btn {
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+  border-top-right-radius: 12px !important;
+  border-bottom-right-radius: 12px !important;
+  border: 1px solid rgba(102, 126, 234, 0.3) !important;
+  border-left: none !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  backdrop-filter: blur(10px) !important;
+  height: auto !important;
+  display: flex !important;
+  align-items: center !important;
+  padding: 4px 15px !important;
+}
+
+.ant-input-search > .ant-input-group > .ant-input-group-addon > .ant-btn:hover {
+  border-color: rgba(102, 126, 234, 0.5) !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+}
+
+/* 只针对文件管理器工具栏的Space组件 */
+.file-manager-toolbar {
+  display: flex !important;
+  align-items: center !important;
+  gap: 16px !important; /* 增加间距 */
+  flex-wrap: nowrap !important;
+}
+
+.file-manager-toolbar .ant-space-item {
+  flex-shrink: 0 !important;
+  position: relative !important;
+  z-index: auto !important;
+}
+
+/* 特别处理工具栏中的按钮，确保不重叠 */
+.file-manager-toolbar .ant-space-item:nth-child(1) {
+  margin-right: 16px !important;
+}
+
+.file-manager-toolbar .ant-space-item:nth-child(2) {
+  margin-left: 0 !important;
+  position: relative !important;
+  z-index: 2 !important;
+}
+
+/* 恢复List.Item中actions的正常间距 */
+.ant-list-item-action {
+  margin-left: 16px !important;
+}
+
+.ant-list-item-action > li {
+  padding: 0 4px !important;
+}
+
+.ant-list-item-action > li:not(:last-child) {
+  border-right: 1px solid #f0f0f0 !important;
+  padding-right: 8px !important;
+  margin-right: 8px !important;
+}
+
+/* 文件列表和设置页操作按钮样式 - 无边框但显眼 */
+.ant-list-item-action .ant-btn,
+.ant-card .ant-btn[type="text"],
+.ant-popconfirm .ant-btn[type="text"] {
+  border: none !important;
+  background: rgba(102, 126, 234, 0.12) !important; /* 使用纯色背景 */
+  color: #667eea !important;
+  border-radius: 8px !important;
+  font-weight: 500 !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 1px 4px rgba(102, 126, 234, 0.1) !important;
+  -webkit-transform: translateZ(0) !important; /* 强制硬件加速 */
+  transform: translateZ(0) !important;
+  will-change: auto !important;
+}
+
+.ant-list-item-action .ant-btn:hover,
+.ant-card .ant-btn[type="text"]:hover,
+.ant-popconfirm .ant-btn[type="text"]:hover {
+  background: rgba(102, 126, 234, 0.18) !important; /* 使用纯色背景 */
+  color: #5a67d8 !important;
+  -webkit-transform: translateZ(0) translateY(-1px) !important;
+  transform: translateZ(0) translateY(-1px) !important;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15) !important;
+}
+
+/* 危险按钮特殊处理 */
+.ant-list-item-action .ant-btn[danger],
+.ant-card .ant-btn[danger],
+.ant-popconfirm .ant-btn[danger] {
+  background: rgba(245, 87, 108, 0.12) !important; /* 使用纯色背景 */
+  color: #f5576c !important;
+}
+
+.ant-list-item-action .ant-btn[danger]:hover,
+.ant-card .ant-btn[danger]:hover,
+.ant-popconfirm .ant-btn[danger]:hover {
+  background: rgba(245, 87, 108, 0.18) !important; /* 使用纯色背景 */
+  color: #dc2626 !important;
+  box-shadow: 0 2px 8px rgba(245, 87, 108, 0.15) !important;
+}
+
+/* 文件列表布局优化 */
+.ant-list-item {
+  padding: 12px 16px !important; /* 恢复合适的padding */
+  border-bottom: 1px solid rgba(240, 240, 240, 0.8) !important;
+  background: transparent !important; /* 列表项背景透明，显示父容器背景 */
+}
+
+.ant-list-item:last-child {
+  border-bottom: none !important;
+}
+
+/* 文件列表卡片中的列表项特殊处理 */
+.file-list-card .ant-list-item {
+  border-bottom: 1px solid rgba(240, 240, 240, 0.3) !important; /* 更淡的分割线 */
+}
+
+.file-list-card .ant-list-item:last-child {
+  border-bottom: none !important;
+}
+
+/* 减少卡片间距 */
+.ant-card + .ant-card {
+  margin-top: 12px !important; /* 从16px减少到12px */
+}
+
+/* 文件列表卡片内部间距优化 */
+.ant-card .ant-card-body {
+  padding: 16px !important; /* 确保卡片内部有适当padding */
+}
+
+/* 文件列表卡片背景透明化 */
+.file-list-card {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.file-list-card .ant-card-head {
+  background: rgba(255, 255, 255, 0.95) !important; /* 提高不透明度 */
+  border-bottom: none !important; /* 移除分割线，让header与列表一体 */
+  border-radius: 16px 16px 0 0 !important; /* 只有上方圆角 */
+  margin-bottom: 0 !important;
+  -webkit-transform: translateZ(0) !important; /* 强制硬件加速 */
+  transform: translateZ(0) !important;
+  will-change: auto !important;
+}
+
+.file-list-card .ant-card-body {
+  background: transparent !important;
+  padding: 0 !important; /* 移除卡片body的padding，让列表完全贴边 */
+}
+
+/* 普通卡片中的列表 */
+.ant-card:not(.file-list-card) .ant-list {
+  margin: -8px -16px !important; /* 负边距抵消卡片padding，让列表贴边 */
+}
+
+/* 文件列表卡片中的列表 */
+.file-list-card .ant-list {
+  margin: 0 !important; /* 透明卡片不需要负边距 */
+  background: rgba(255, 255, 255, 0.95) !important; /* 提高不透明度 */
+  border-radius: 0 0 16px 16px !important; /* 只有下方圆角 */
+  overflow: hidden !important; /* 确保圆角效果 */
+  -webkit-transform: translateZ(0) !important; /* 强制硬件加速 */
+  transform: translateZ(0) !important;
+  will-change: auto !important; /* 提示浏览器优化 */
+}
+
+.ant-list .ant-list-item {
+  margin: 0 !important;
+  padding: 12px 16px !important; /* 恢复列表项的padding */
 }
 
 .ant-upload-drag {
-  border-radius: 8px;
+  border-radius: 16px !important;
+  background: rgba(255, 255, 255, 0.8) !important;
+  -webkit-backdrop-filter: blur(15px) !important;
+  backdrop-filter: blur(15px) !important;
+  border: 2px dashed rgba(102, 126, 234, 0.3) !important;
+}
+
+.ant-upload-drag:hover {
+  border-color: rgba(102, 126, 234, 0.6) !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+}
+
+.ant-modal-content {
+  background: rgba(255, 255, 255, 0.95) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  backdrop-filter: blur(20px) !important;
+  border-radius: 16px !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.ant-tag {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 8px !important;
 }
 
 /* 移动端 Tabs 优化 */

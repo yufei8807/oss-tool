@@ -20,30 +20,30 @@ const MainApp = () => {
     {
       key: '1',
       label: (
-        <span>
-          <FileTextOutlined />
-          文件管理
-        </span>
+        <div className="tab-item">
+          <FileTextOutlined className="tab-icon" />
+          <span className="tab-text">文件管理</span>
+        </div>
       ),
       children: <FileManager />,
     },
     {
       key: '2',
       label: (
-        <span>
-          <PictureOutlined />
-          相册
-        </span>
+        <div className="tab-item">
+          <PictureOutlined className="tab-icon" />
+          <span className="tab-text">相册</span>
+        </div>
       ),
       children: <Gallery />,
     },
     {
       key: '3',
       label: (
-        <span>
-          <SettingOutlined />
-          设置
-        </span>
+        <div className="tab-item">
+          <SettingOutlined className="tab-icon" />
+          <span className="tab-text">设置</span>
+        </div>
       ),
       children: <Settings />,
     },
@@ -96,7 +96,34 @@ function App() {
     <ConfigProvider
       theme={{
         token: {
-          colorPrimary: '#1890ff',
+          colorPrimary: '#667eea',
+          colorSuccess: '#52c41a',
+          colorWarning: '#faad14',
+          colorError: '#ff4d4f',
+          borderRadius: 12,
+          colorBgContainer: 'rgba(255, 255, 255, 0.9)',
+          colorBorder: 'rgba(255, 255, 255, 0.2)',
+          colorText: '#333',
+          colorTextSecondary: '#666',
+          boxShadow: '0 4px 32px rgba(0, 0, 0, 0.1)',
+        },
+        components: {
+          Card: {
+            colorBgContainer: 'rgba(255, 255, 255, 0.9)',
+            boxShadow: '0 4px 32px rgba(0, 0, 0, 0.1)',
+          },
+          Button: {
+            colorPrimary: '#667eea',
+            colorPrimaryHover: '#764ba2',
+          },
+          Input: {
+            colorBgContainer: 'rgba(255, 255, 255, 0.9)',
+            colorBorder: 'rgba(102, 126, 234, 0.3)', /* 默认边框颜色 */
+            colorBorderHover: 'rgba(102, 126, 234, 0.5)', /* 悬停边框颜色 */
+            activeBorderColor: '#667eea', /* 聚焦边框颜色 */
+            activeShadow: '0 0 0 2px rgba(102, 126, 234, 0.2)',
+            boxShadow: 'none', /* 移除默认阴影 */
+          },
         },
       }}
     >
