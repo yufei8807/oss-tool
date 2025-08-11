@@ -18,6 +18,10 @@ export const OSSProvider = ({ children }) => {
   const [currentConfigId, setCurrentConfigId] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [loading, setLoading] = useState(false);
+  
+  // 文件列表缓存
+  const [fileListCache, setFileListCache] = useState(new Map());
+  const [cacheTimestamp, setCacheTimestamp] = useState(new Map());
 
   // 获取当前活跃配置
   const currentConfig = ossConfigs.find(config => config.id === currentConfigId) || {
@@ -63,6 +67,10 @@ export const OSSProvider = ({ children }) => {
   const initOSSClient = async (config) => {
     try {
       setLoading(true);
+      
+      // 清除旧的缓存数据
+      clearFileListCache();
+      
       const client = new OSS({
         region: config.region || 'oss-cn-hangzhou',
         accessKeyId: config.accessKeyId,
@@ -164,6 +172,9 @@ export const OSSProvider = ({ children }) => {
     setCurrentConfigId(configId);
     localStorage.setItem('currentOssConfigId', configId);
     
+    // 切换配置时清除缓存
+    clearFileListCache();
+    
     const config = ossConfigs.find(c => c.id === configId);
     if (config && config.accessKeyId && config.accessKeySecret && config.bucket) {
       initOSSClient(config);
@@ -235,6 +246,8 @@ export const OSSProvider = ({ children }) => {
     
     try {
       const result = await ossClient.put(path, file);
+      // 清除缓存，因为文件列表已经改变
+      clearFileListCache();
       return result;
     } catch (error) {
       console.error('Upload failed:', error);
@@ -250,6 +263,8 @@ export const OSSProvider = ({ children }) => {
     
     try {
       const result = await ossClient.delete(path);
+      // 清除缓存，因为文件列表已经改变
+      clearFileListCache();
       return result;
     } catch (error) {
       console.error('Delete failed:', error);
@@ -257,18 +272,46 @@ export const OSSProvider = ({ children }) => {
     }
   };
 
-  // 获取文件列表
-  const listFiles = async (prefix = '', maxKeys = 100) => {
+  // 清除文件列表缓存
+  const clearFileListCache = () => {
+    setFileListCache(new Map());
+    setCacheTimestamp(new Map());
+  };
+
+  // 获取文件列表（带缓存）
+  const listFiles = async (prefix = '', maxKeys = 100, useCache = true) => {
     if (!ossClient) {
       throw new Error('OSS客户端未初始化');
     }
     
+    const cacheKey = `${prefix}_${maxKeys}`;
+    const now = Date.now();
+    const cacheExpiry = 5 * 60 * 1000; // 5分钟缓存过期时间
+    
+    // 检查缓存
+    if (useCache && fileListCache.has(cacheKey)) {
+      const timestamp = cacheTimestamp.get(cacheKey);
+      if (timestamp && (now - timestamp) < cacheExpiry) {
+        console.log('使用缓存的文件列表');
+        return fileListCache.get(cacheKey);
+      }
+    }
+    
     try {
+      console.log('从OSS获取文件列表');
       const result = await ossClient.listV2({
         prefix,
         'max-keys': maxKeys
       });
-      return result.objects || [];
+      const files = result.objects || [];
+      
+      // 更新缓存
+      if (useCache) {
+        setFileListCache(prev => new Map(prev.set(cacheKey, files)));
+        setCacheTimestamp(prev => new Map(prev.set(cacheKey, now)));
+      }
+      
+      return files;
     } catch (error) {
       console.error('List files failed:', error);
       throw error;
@@ -328,7 +371,8 @@ export const OSSProvider = ({ children }) => {
     deleteFile,
     listFiles,
     getFileUrl,
-    downloadFile
+    downloadFile,
+    clearFileListCache
   };
 
   return (

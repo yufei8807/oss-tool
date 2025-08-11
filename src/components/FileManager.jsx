@@ -31,22 +31,24 @@ const { Dragger } = Upload;
 
 const FileManager = () => {
   const { message } = App.useApp();
-  const { isConnected, uploadFile, deleteFile, listFiles, getFileUrl, downloadFile } = useOSS();
+  const { isConnected, uploadFile, deleteFile, listFiles, getFileUrl, downloadFile, clearFileListCache } = useOSS();
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [previewVisible, setPreviewVisible] = useState(false);
   const [previewFile, setPreviewFile] = useState(null);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
   // 获取文件列表
-  const fetchFiles = async () => {
+  const fetchFiles = async (forceRefresh = false) => {
     if (!isConnected) return;
     
     try {
       setLoading(true);
-      const fileList = await listFiles();
+      const fileList = await listFiles('', 100, !forceRefresh);
       setFiles(fileList);
+      setHasLoadedOnce(true);
     } catch (error) {
       message.error('获取文件列表失败: ' + error.message);
     } finally {
@@ -55,8 +57,11 @@ const FileManager = () => {
   };
 
   useEffect(() => {
-    fetchFiles();
-  }, [isConnected]);
+    // 只有在连接状态且未加载过时才自动加载
+    if (isConnected && !hasLoadedOnce) {
+      fetchFiles();
+    }
+  }, [isConnected, hasLoadedOnce]);
 
   // 上传文件
   const handleUpload = async (file) => {
@@ -176,7 +181,7 @@ const FileManager = () => {
           />
           <Button 
             icon={<ReloadOutlined />} 
-            onClick={fetchFiles}
+            onClick={() => fetchFiles(true)}
             loading={loading}
             title="刷新"
             style={{ flexShrink: 0 }}

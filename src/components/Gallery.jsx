@@ -29,7 +29,7 @@ const { Dragger } = Upload;
 
 const Gallery = () => {
   const { message } = App.useApp();
-  const { isConnected, uploadFile, deleteFile, listFiles, getFileUrl, downloadFile } = useOSS();
+  const { isConnected, uploadFile, deleteFile, listFiles, getFileUrl, downloadFile, clearFileListCache } = useOSS();
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -38,6 +38,7 @@ const Gallery = () => {
   const [previewImage, setPreviewImage] = useState('');
   const [previewTitle, setPreviewTitle] = useState('');
   const [uploadModalVisible, setUploadModalVisible] = useState(false);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
   // 图片文件扩展名
   const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
@@ -48,12 +49,12 @@ const Gallery = () => {
   };
 
   // 获取图片列表
-  const fetchImages = async () => {
+  const fetchImages = async (forceRefresh = false) => {
     if (!isConnected) return;
     
     try {
       setLoading(true);
-      const fileList = await listFiles();
+      const fileList = await listFiles('', 100, !forceRefresh);
       // 只保留图片文件
       const imageFiles = fileList.filter(file => isImageFile(file.name));
       
@@ -65,6 +66,7 @@ const Gallery = () => {
       }));
       
       setImages(imagesWithUrl);
+      setHasLoadedOnce(true);
     } catch (error) {
       message.error('获取图片列表失败: ' + error.message);
     } finally {
@@ -73,8 +75,11 @@ const Gallery = () => {
   };
 
   useEffect(() => {
-    fetchImages();
-  }, [isConnected]);
+    // 只有在连接状态且未加载过时才自动加载
+    if (isConnected && !hasLoadedOnce) {
+      fetchImages();
+    }
+  }, [isConnected, hasLoadedOnce]);
 
   // 上传图片
   const handleUpload = async (file) => {
@@ -180,7 +185,7 @@ const Gallery = () => {
             </Button>
             <Button 
               icon={<ReloadOutlined />} 
-              onClick={fetchImages}
+              onClick={() => fetchImages(true)}
               loading={loading}
             >
               刷新

@@ -90,7 +90,7 @@ const MainApp = () => {
             tabPosition="bottom"
             size="large"
             className="bottom-tabs"
-            destroyOnHidden={true}
+            destroyOnHidden={false}
           />
         </div>
       </div>
