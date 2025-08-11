@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import OSS from 'ali-oss';
 import { showMessage } from '../utils/messageService';
+import { encryptOSSConfigs, decryptOSSConfigs } from '../utils/crypto';
 
 const OSSContext = createContext();
 
@@ -36,29 +37,36 @@ export const OSSProvider = ({ children }) => {
 
   // 从localStorage加载配置
   useEffect(() => {
-    const savedConfigs = localStorage.getItem('ossConfigs');
     const savedCurrentId = localStorage.getItem('currentOssConfigId');
+    const savedConfigs = localStorage.getItem('ossConfigs');
     
     if (savedConfigs) {
       try {
-        const configs = JSON.parse(savedConfigs);
-        setOssConfigs(configs);
+        const encryptedConfigs = JSON.parse(savedConfigs);
+        // 直接解密配置（所有配置必须已加密）
+        const decryptedConfigs = decryptOSSConfigs(encryptedConfigs);
         
-        if (savedCurrentId && configs.find(c => c.id === savedCurrentId)) {
-          setCurrentConfigId(savedCurrentId);
-          const activeConfig = configs.find(c => c.id === savedCurrentId);
-          if (activeConfig && activeConfig.accessKeyId && activeConfig.accessKeySecret && activeConfig.bucket) {
-            initOSSClient(activeConfig);
-          }
-        } else if (configs.length > 0) {
-          // 如果没有保存的当前配置ID，使用第一个配置
-          setCurrentConfigId(configs[0].id);
-          if (configs[0].accessKeyId && configs[0].accessKeySecret && configs[0].bucket) {
-            initOSSClient(configs[0]);
+        if (decryptedConfigs.length > 0) {
+          setOssConfigs(decryptedConfigs);
+          
+          // 设置当前配置
+          if (savedCurrentId && decryptedConfigs.find(c => c.id === savedCurrentId)) {
+            setCurrentConfigId(savedCurrentId);
+            const activeConfig = decryptedConfigs.find(c => c.id === savedCurrentId);
+            if (activeConfig && activeConfig.accessKeyId && activeConfig.accessKeySecret && activeConfig.bucket) {
+              initOSSClient(activeConfig);
+            }
+          } else if (decryptedConfigs.length > 0) {
+            // 如果没有保存的当前配置ID，使用第一个配置
+            setCurrentConfigId(decryptedConfigs[0].id);
+            if (decryptedConfigs[0].accessKeyId && decryptedConfigs[0].accessKeySecret && decryptedConfigs[0].bucket) {
+              initOSSClient(decryptedConfigs[0]);
+            }
           }
         }
       } catch (error) {
-        console.error('Failed to parse saved OSS configs:', error);
+        console.error('加载OSS配置失败:', error);
+        showMessage.error('配置加载失败，请重新配置');
       }
     }
   }, []);
@@ -103,7 +111,9 @@ export const OSSProvider = ({ children }) => {
 
   // 保存配置列表到localStorage
   const saveConfigsToStorage = (configs, currentId) => {
-    localStorage.setItem('ossConfigs', JSON.stringify(configs));
+    // 加密配置信息后保存
+    const encryptedConfigs = encryptOSSConfigs(configs);
+    localStorage.setItem('ossConfigs', JSON.stringify(encryptedConfigs));
     if (currentId) {
       localStorage.setItem('currentOssConfigId', currentId);
     }

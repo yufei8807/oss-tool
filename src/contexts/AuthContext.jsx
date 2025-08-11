@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { showMessage } from '../utils/messageService';
+import { verifyPassword } from '../utils/crypto';
 import usersData from '../data/users.json';
 
 const AuthContext = createContext();
@@ -48,7 +49,7 @@ export const AuthProvider = ({ children }) => {
       
       // 查找用户
       const user = usersData.find(
-        u => u.username === username && u.password === password
+        u => u.username === username && verifyPassword(password, u.password)
       );
       
       if (user) {

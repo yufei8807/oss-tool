@@ -35,6 +35,7 @@ import {
 } from '@ant-design/icons';
 import { useOSS } from '../contexts/OSSContext';
 import { useAuth } from '../contexts/AuthContext';
+import { encryptOSSConfigs, decryptOSSConfigs } from '../utils/crypto';
 
 const { Option } = Select;
 const { Title, Paragraph, Text } = Typography;
@@ -185,11 +186,15 @@ const Settings = () => {
   // 导出配置到文件
   const handleExportConfig = () => {
     try {
+      // 加密配置信息后导出
+      const encryptedConfigs = encryptOSSConfigs(ossConfigs);
+      
       const configData = {
-        configs: ossConfigs,
+        configs: encryptedConfigs,
         currentConfigId: currentConfigId,
         exportTime: new Date().toISOString(),
-        version: '1.0'
+        version: '2.0', // 更新版本号表示支持加密
+        encrypted: true // 标记为加密版本
       };
       
       const jsonString = JSON.stringify(configData, null, 2);
@@ -198,13 +203,13 @@ const Settings = () => {
       
       const link = document.createElement('a');
       link.href = url;
-      link.download = `oss-configs-${new Date().toISOString().split('T')[0]}.json`;
+      link.download = `oss-configs-encrypted-${new Date().toISOString().split('T')[0]}.json`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
       
-      message.success('配置导出成功');
+      message.success('配置导出成功（已加密）');
     } catch (error) {
       message.error('配置导出失败: ' + error.message);
     }
@@ -244,9 +249,21 @@ const Settings = () => {
             throw new Error('配置文件中没有找到任何配置');
           }
           
+          // 处理加密的配置文件
+          let processedConfigs = configData.configs;
+          if (configData.encrypted === true || configData.version === '2.0') {
+            console.log('检测到加密配置文件，正在解密...');
+            try {
+              processedConfigs = decryptOSSConfigs(configData.configs);
+              console.log('配置解密成功');
+            } catch (decryptError) {
+              throw new Error('配置文件解密失败，可能是密钥不匹配: ' + decryptError.message);
+            }
+          }
+          
           // 验证每个配置的必要字段
-          for (let i = 0; i < configData.configs.length; i++) {
-            const config = configData.configs[i];
+          for (let i = 0; i < processedConfigs.length; i++) {
+            const config = processedConfigs[i];
             if (!config.name || !config.region || !config.accessKeyId || !config.accessKeySecret || !config.bucket) {
               throw new Error(`第${i + 1}个配置项缺少必要字段（name, region, accessKeyId, accessKeySecret, bucket）`);
             }
@@ -256,12 +273,12 @@ const Settings = () => {
              title: '确认导入配置',
              content: (
                <div>
-                 <p>检测到 <strong>{configData.configs.length}</strong> 个配置：</p>
+                 <p>检测到 <strong>{processedConfigs.length}</strong> 个配置{configData.encrypted ? '（已加密）' : ''}：</p>
                  <ul style={{ marginTop: 8, paddingLeft: 20 }}>
-                   {configData.configs.slice(0, 3).map((config, index) => (
+                   {processedConfigs.slice(0, 3).map((config, index) => (
                      <li key={index}>{config.name} ({config.region})</li>
                    ))}
-                   {configData.configs.length > 3 && <li>...还有{configData.configs.length - 3}个配置</li>}
+                   {processedConfigs.length > 3 && <li>...还有{processedConfigs.length - 3}个配置</li>}
                  </ul>
                  <p style={{ marginTop: 12, color: '#ff4d4f' }}>导入后将覆盖当前所有配置，是否继续？</p>
                </div>
@@ -277,14 +294,14 @@ const Settings = () => {
                  // 添加短暂延迟确保状态更新
                  await new Promise(resolve => setTimeout(resolve, 100));
                  
-                 console.log('导入新配置:', configData.configs);
-                 importConfigs(configData.configs, configData.currentConfigId);
+                 console.log('导入新配置:', processedConfigs);
+                 importConfigs(processedConfigs, configData.currentConfigId);
                  
                  console.log('配置导入完成');
                  
                  // 关闭loading消息
                  message.destroy();
-                 message.success(`成功导入 ${configData.configs.length} 个配置`);
+                 message.success(`成功导入 ${processedConfigs.length} 个配置${configData.encrypted ? '（已解密）' : ''}`);
                  
                  // 强制刷新页面状态
                  setTimeout(() => {
