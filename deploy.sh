@@ -3,7 +3,18 @@
 # OSS工具部署脚本
 # 适用于Alibaba Cloud Linux 3.2104 LTS
 # 作者: yufei
-# 版本: 1.0
+# 版本: 1.1
+# 
+# 新增功能:
+# - 改进的SSL/HTTPS配置
+# - SSL证书验证和诊断
+# - 故障排除工具
+# 
+# 用法:
+# bash deploy.sh                 # 完整部署
+# bash deploy.sh --diagnose-ssl  # 诊断HTTPS问题
+# bash deploy.sh --reconfigure-ssl # 重新配置SSL
+# bash deploy.sh --help          # 显示帮助
 
 set -e  # 遇到错误立即退出
 
@@ -234,8 +245,16 @@ server {
     gzip_min_length 1024;
     gzip_types text/plain text/css text/xml text/javascript application/javascript application/xml+rss application/json;
     
-    # 静态文件缓存
+    # 静态文件缓存（通过代理处理）
     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        proxy_pass http://127.0.0.1:${PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        
+        # 缓存设置
         expires 1y;
         add_header Cache-Control "public, immutable";
         access_log off;
@@ -410,6 +429,27 @@ verify_deployment() {
     # 检查Nginx状态
     if systemctl is-active --quiet nginx; then
         log_success "Nginx服务运行正常"
+        
+        # 如果配置了HTTPS，验证SSL配置
+        local nginx_config="${NGINX_CONFIG_DIR}/${PROJECT_NAME}.conf"
+        if [ -f "$nginx_config" ] && grep -q "listen 443 ssl" "$nginx_config"; then
+            log_info "检测到HTTPS配置，验证SSL证书..."
+            
+            # 提取证书路径
+            local cert_path=$(grep "ssl_certificate " "$nginx_config" | grep -v "ssl_certificate_key" | awk '{print $2}' | sed 's/;//')
+            local key_path=$(grep "ssl_certificate_key" "$nginx_config" | awk '{print $2}' | sed 's/;//')
+            
+            if [ -f "$cert_path" ] && [ -f "$key_path" ]; then
+                if openssl x509 -in "$cert_path" -text -noout > /dev/null 2>&1 && \
+                   openssl rsa -in "$key_path" -check -noout > /dev/null 2>&1; then
+                    log_success "SSL证书验证通过"
+                else
+                    log_warning "SSL证书可能有问题，建议运行诊断: bash $0 --diagnose-ssl"
+                fi
+            else
+                log_warning "SSL证书文件缺失，建议重新配置: bash $0 --reconfigure-ssl"
+            fi
+        fi
     else
         log_error "Nginx服务异常"
         exit 1
@@ -465,6 +505,8 @@ show_deployment_info() {
     echo "2. 如果域名无法访问，请确认DNS解析是否正确指向服务器IP"
     echo "3. 如果SSL证书有问题，请检查证书文件路径和权限"
     echo "4. 恢复默认Nginx配置: mv /etc/nginx/nginx.conf.backup /etc/nginx/nginx.conf"
+    echo "5. 诊断HTTPS问题: bash $0 --diagnose-ssl"
+    echo "6. 重新配置SSL: bash $0 --reconfigure-ssl"
 }
 
 # 配置SSL证书（可选）
@@ -478,6 +520,17 @@ configure_ssl() {
         read -p "请输入SSL私钥文件路径（.key）: " SSL_KEY_PATH
         
         if [ -f "$SSL_CERT_PATH" ] && [ -f "$SSL_KEY_PATH" ]; then
+            # 验证SSL证书
+            if ! openssl x509 -in "$SSL_CERT_PATH" -text -noout > /dev/null 2>&1; then
+                log_error "SSL证书文件格式无效"
+                return 1
+            fi
+            
+            if ! openssl rsa -in "$SSL_KEY_PATH" -check -noout > /dev/null 2>&1; then
+                log_error "SSL私钥文件格式无效"
+                return 1
+            fi
+            
             # 创建SSL目录
             mkdir -p /etc/ssl/certs /etc/ssl/private
             
@@ -493,22 +546,105 @@ configure_ssl() {
             CERT_NAME=$(basename "$SSL_CERT_PATH")
             KEY_NAME=$(basename "$SSL_KEY_PATH")
             
-            # 更新Nginx配置以启用HTTPS
+            # 重新生成Nginx配置以启用HTTPS
             local nginx_config="${NGINX_CONFIG_DIR}/${PROJECT_NAME}.conf"
             
-            # 启用HTTPS重定向
-            sed -i 's/# return 301 https/return 301 https/' "$nginx_config"
+            cat > "$nginx_config" << SSLEOF
+# HTTP服务器 - 重定向到HTTPS
+server {
+    listen 80;
+    server_name $SERVER_NAME;
+    
+    # 重定向所有HTTP请求到HTTPS
+    return 301 https://\$server_name\$request_uri;
+}
+
+# HTTPS服务器
+server {
+    listen 443 ssl http2;
+    server_name $SERVER_NAME;
+    
+    # SSL证书配置
+    ssl_certificate /etc/ssl/certs/$CERT_NAME;
+    ssl_certificate_key /etc/ssl/private/$KEY_NAME;
+    
+    # SSL安全配置
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384;
+    ssl_prefer_server_ciphers on;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
+    
+    # 安全头设置
+    add_header X-Frame-Options DENY;
+    add_header X-Content-Type-Options nosniff;
+    add_header X-XSS-Protection "1; mode=block";
+    add_header Referrer-Policy "strict-origin-when-cross-origin";
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    
+    # Gzip压缩
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_types text/plain text/css text/xml text/javascript application/javascript application/xml+rss application/json;
+    
+    # 静态文件缓存（通过代理处理）
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)\$ {
+        proxy_pass http://127.0.0.1:${PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        
+        # 缓存设置
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+    }
+    
+    # 代理到Node.js应用
+    location / {
+        proxy_pass http://127.0.0.1:${PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_cache_bypass \$http_upgrade;
+        
+        # 超时设置
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+    
+    # 健康检查
+    location /health {
+        access_log off;
+        return 200 "healthy\n";
+        add_header Content-Type text/plain;
+    }
+}
+SSLEOF
             
-            # 启用HTTPS服务器块
-            sed -i 's/# server {/server {/g' "$nginx_config"
-            sed -i 's/# }/}/g' "$nginx_config"
-            sed -i "s|# ssl_certificate /etc/ssl/certs/your-domain.pem;|ssl_certificate /etc/ssl/certs/$CERT_NAME;|" "$nginx_config"
-            sed -i "s|# ssl_certificate_key /etc/ssl/private/your-domain.key;|ssl_certificate_key /etc/ssl/private/$KEY_NAME;|" "$nginx_config"
-            sed -i 's/^#     /    /g' "$nginx_config"
+            # 测试Nginx配置
+            if ! nginx -t; then
+                log_error "Nginx配置测试失败，请检查SSL证书"
+                return 1
+            fi
             
             # 开放443端口
-            firewall-cmd --permanent --add-service=https
-            firewall-cmd --reload
+            if systemctl is-active --quiet firewalld; then
+                firewall-cmd --permanent --add-service=https
+                firewall-cmd --reload
+                log_success "已开放HTTPS端口443"
+            fi
+            
+            # 重新加载Nginx
+            systemctl reload nginx
             
             log_success "SSL证书配置完成"
         else
@@ -542,6 +678,176 @@ main() {
     
     log_success "部署完成！"
 }
+
+# SSL诊断函数
+diagnose_ssl() {
+    log_info "开始诊断HTTPS配置..."
+    
+    local nginx_config="${NGINX_CONFIG_DIR}/${PROJECT_NAME}.conf"
+    
+    # 检查Nginx配置文件是否存在
+    if [ ! -f "$nginx_config" ]; then
+        log_error "Nginx配置文件不存在: $nginx_config"
+        return 1
+    fi
+    
+    # 检查SSL证书配置
+    if grep -q "listen 443 ssl" "$nginx_config"; then
+        log_info "发现HTTPS配置"
+        
+        # 提取证书路径
+        local cert_path=$(grep "ssl_certificate " "$nginx_config" | grep -v "ssl_certificate_key" | awk '{print $2}' | sed 's/;//')
+        local key_path=$(grep "ssl_certificate_key" "$nginx_config" | awk '{print $2}' | sed 's/;//')
+        
+        log_info "证书文件: $cert_path"
+        log_info "私钥文件: $key_path"
+        
+        # 检查证书文件是否存在
+        if [ ! -f "$cert_path" ]; then
+            log_error "SSL证书文件不存在: $cert_path"
+        else
+            log_success "SSL证书文件存在"
+            
+            # 检查证书有效性
+            if openssl x509 -in "$cert_path" -text -noout > /dev/null 2>&1; then
+                log_success "SSL证书格式有效"
+                
+                # 显示证书信息
+                local cert_subject=$(openssl x509 -in "$cert_path" -subject -noout | sed 's/subject=//')
+                local cert_issuer=$(openssl x509 -in "$cert_path" -issuer -noout | sed 's/issuer=//')
+                local cert_dates=$(openssl x509 -in "$cert_path" -dates -noout)
+                
+                echo "证书主题: $cert_subject"
+                echo "证书颁发者: $cert_issuer"
+                echo "证书有效期: $cert_dates"
+            else
+                log_error "SSL证书格式无效"
+            fi
+        fi
+        
+        # 检查私钥文件
+        if [ ! -f "$key_path" ]; then
+            log_error "SSL私钥文件不存在: $key_path"
+        else
+            log_success "SSL私钥文件存在"
+            
+            if openssl rsa -in "$key_path" -check -noout > /dev/null 2>&1; then
+                log_success "SSL私钥格式有效"
+            else
+                log_error "SSL私钥格式无效"
+            fi
+        fi
+        
+        # 检查证书和私钥是否匹配
+        if [ -f "$cert_path" ] && [ -f "$key_path" ]; then
+            local cert_md5=$(openssl x509 -noout -modulus -in "$cert_path" | openssl md5)
+            local key_md5=$(openssl rsa -noout -modulus -in "$key_path" | openssl md5)
+            
+            if [ "$cert_md5" = "$key_md5" ]; then
+                log_success "SSL证书和私钥匹配"
+            else
+                log_error "SSL证书和私钥不匹配"
+            fi
+        fi
+    else
+        log_warning "未发现HTTPS配置，当前为HTTP模式"
+    fi
+    
+    # 检查Nginx配置语法
+    log_info "检查Nginx配置语法..."
+    if nginx -t; then
+        log_success "Nginx配置语法正确"
+    else
+        log_error "Nginx配置语法错误"
+    fi
+    
+    # 检查端口监听
+    log_info "检查端口监听状态..."
+    if netstat -tlnp | grep -q ":80.*LISTEN"; then
+        log_success "HTTP端口80正在监听"
+    else
+        log_warning "HTTP端口80未监听"
+    fi
+    
+    if netstat -tlnp | grep -q ":443.*LISTEN"; then
+        log_success "HTTPS端口443正在监听"
+    else
+        log_warning "HTTPS端口443未监听"
+    fi
+    
+    # 检查防火墙状态
+    log_info "检查防火墙状态..."
+    if systemctl is-active --quiet firewalld; then
+        if firewall-cmd --list-services | grep -q "http "; then
+            log_success "HTTP服务已在防火墙中开放"
+        else
+            log_warning "HTTP服务未在防火墙中开放"
+        fi
+        
+        if firewall-cmd --list-services | grep -q "https"; then
+            log_success "HTTPS服务已在防火墙中开放"
+        else
+            log_warning "HTTPS服务未在防火墙中开放"
+        fi
+    else
+        log_info "防火墙服务未运行"
+    fi
+    
+    # 检查Nginx服务状态
+    log_info "检查Nginx服务状态..."
+    if systemctl is-active --quiet nginx; then
+        log_success "Nginx服务正在运行"
+    else
+        log_error "Nginx服务未运行"
+        echo "尝试启动Nginx: systemctl start nginx"
+    fi
+    
+    log_info "诊断完成"
+}
+
+# 重新配置SSL函数
+reconfigure_ssl() {
+    log_info "重新配置SSL证书..."
+    
+    # 停止Nginx以避免配置冲突
+    systemctl stop nginx
+    
+    # 调用SSL配置函数
+    configure_ssl
+    
+    # 启动Nginx
+    systemctl start nginx
+    
+    # 验证配置
+    if systemctl is-active --quiet nginx; then
+        log_success "Nginx重新启动成功"
+        diagnose_ssl
+    else
+        log_error "Nginx启动失败，请检查配置"
+        systemctl status nginx
+    fi
+}
+
+# 处理命令行参数
+case "${1:-}" in
+    --diagnose-ssl)
+        diagnose_ssl
+        exit 0
+        ;;
+    --reconfigure-ssl)
+        check_root
+        reconfigure_ssl
+        exit 0
+        ;;
+    --help|-h)
+        echo "用法: $0 [选项]"
+        echo "选项:"
+        echo "  --diagnose-ssl     诊断HTTPS配置问题"
+        echo "  --reconfigure-ssl  重新配置SSL证书"
+        echo "  --help, -h         显示此帮助信息"
+        exit 0
+        ;;
+esac
 
 # 错误处理
 trap 'log_error "部署过程中发生错误，请检查日志"; exit 1' ERR
