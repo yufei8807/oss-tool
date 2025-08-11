@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import OSS from 'ali-oss';
-import { message } from 'antd';
+import { showMessage } from '../utils/messageService';
 
 const OSSContext = createContext();
 
@@ -78,11 +78,11 @@ export const OSSProvider = ({ children }) => {
       
       setOssClient(client);
       setIsConnected(true);
-      message.success('OSS连接成功');
+      showMessage.success('OSS连接成功');
     } catch (error) {
       console.error('OSS connection failed:', error);
       setIsConnected(false);
-      message.error('OSS连接失败: ' + error.message);
+      showMessage.error('OSS连接失败: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -171,6 +171,51 @@ export const OSSProvider = ({ children }) => {
       setOssClient(null);
       setIsConnected(false);
     }
+  };
+
+  // 清空所有配置
+  const clearAllConfigs = () => {
+    setOssConfigs([]);
+    setCurrentConfigId(null);
+    setOssClient(null);
+    setIsConnected(false);
+    localStorage.removeItem('ossConfigs');
+    localStorage.removeItem('currentOssConfigId');
+  };
+
+  // 批量导入配置
+  const importConfigs = (configs, targetCurrentConfigId = null) => {
+    // 为每个配置生成新的ID
+    const newConfigs = configs.map(config => ({
+      ...config,
+      id: generateId()
+    }));
+    
+    setOssConfigs(newConfigs);
+    
+    // 设置当前配置
+    let newCurrentConfigId = null;
+    if (targetCurrentConfigId && configs.find(c => c.id === targetCurrentConfigId)) {
+      // 找到对应的新配置ID
+      const originalIndex = configs.findIndex(c => c.id === targetCurrentConfigId);
+      if (originalIndex >= 0) {
+        newCurrentConfigId = newConfigs[originalIndex].id;
+      }
+    }
+    
+    if (!newCurrentConfigId && newConfigs.length > 0) {
+      newCurrentConfigId = newConfigs[0].id;
+    }
+    
+    if (newCurrentConfigId) {
+      setCurrentConfigId(newCurrentConfigId);
+      const activeConfig = newConfigs.find(c => c.id === newCurrentConfigId);
+      if (activeConfig && activeConfig.accessKeyId && activeConfig.accessKeySecret && activeConfig.bucket) {
+        initOSSClient(activeConfig);
+      }
+    }
+    
+    saveConfigsToStorage(newConfigs, newCurrentConfigId);
   };
 
   // 兼容旧版本的保存配置方法
@@ -277,6 +322,8 @@ export const OSSProvider = ({ children }) => {
     updateConfig,
     deleteConfig,
     switchConfig,
+    clearAllConfigs,
+    importConfigs,
     uploadFile,
     deleteFile,
     listFiles,

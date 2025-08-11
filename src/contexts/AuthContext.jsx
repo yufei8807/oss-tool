@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { message } from 'antd';
+import { showMessage } from '../utils/messageService';
 import usersData from '../data/users.json';
 
 const AuthContext = createContext();
@@ -66,14 +66,14 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('currentUser', JSON.stringify(userInfo));
         localStorage.setItem('loginTime', new Date().getTime().toString());
         
-        message.success('登录成功');
+        showMessage.success('登录成功');
         return { success: true };
       } else {
-        message.error('用户名或密码错误');
+        showMessage.error('用户名或密码错误');
         return { success: false, message: '用户名或密码错误' };
       }
     } catch (error) {
-      message.error('登录失败，请重试');
+      showMessage.error('登录失败，请重试');
       return { success: false, message: '登录失败，请重试' };
     }
   };
@@ -84,7 +84,7 @@ export const AuthProvider = ({ children }) => {
     setIsAuthenticated(false);
     localStorage.removeItem('currentUser');
     localStorage.removeItem('loginTime');
-    message.success('已退出登录');
+    showMessage.success('已退出登录');
   };
 
   const value = {

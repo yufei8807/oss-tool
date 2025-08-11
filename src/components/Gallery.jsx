@@ -4,7 +4,6 @@ import {
   Button,
   Upload,
   Modal,
-  message,
   Spin,
   Empty,
   Space,
@@ -12,7 +11,8 @@ import {
   Popconfirm,
   Image,
   Row,
-  Col
+  Col,
+  App
 } from 'antd';
 import {
   UploadOutlined,
@@ -28,6 +28,7 @@ const { Search } = Input;
 const { Dragger } = Upload;
 
 const Gallery = () => {
+  const { message } = App.useApp();
   const { isConnected, uploadFile, deleteFile, listFiles, getFileUrl, downloadFile } = useOSS();
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(false);

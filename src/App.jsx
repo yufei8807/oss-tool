@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Tabs, ConfigProvider, Spin } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Tabs, ConfigProvider, Spin, App as AntdApp } from 'antd';
 import { FileTextOutlined, PictureOutlined, SettingOutlined } from '@ant-design/icons';
 import FileManager from './components/FileManager';
 import Gallery from './components/Gallery';
@@ -7,6 +7,7 @@ import Settings from './components/Settings';
 import Login from './components/Login';
 import { OSSProvider } from './contexts/OSSContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { setMessageApi } from './utils/messageService';
 import './App.css';
 
 const { TabPane } = Tabs;
@@ -15,6 +16,12 @@ const { TabPane } = Tabs;
 const MainApp = () => {
   const [activeTab, setActiveTab] = useState('1');
   const { isAuthenticated, loading } = useAuth();
+  const { message } = AntdApp.useApp();
+
+  // 设置全局message API
+  useEffect(() => {
+    setMessageApi(message);
+  }, [message]);
 
   const items = [
     {
@@ -83,6 +90,7 @@ const MainApp = () => {
             tabPosition="bottom"
             size="large"
             className="bottom-tabs"
+            destroyOnHidden={true}
           />
         </div>
       </div>
@@ -127,9 +135,11 @@ function App() {
         },
       }}
     >
-      <AuthProvider>
-        <MainApp />
-      </AuthProvider>
+      <AntdApp>
+        <AuthProvider>
+          <MainApp />
+        </AuthProvider>
+      </AntdApp>
     </ConfigProvider>
   );
 }

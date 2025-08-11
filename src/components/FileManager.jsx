@@ -5,14 +5,14 @@ import {
   Upload,
   List,
   Modal,
-  message,
   Spin,
   Empty,
   Space,
   Input,
   Popconfirm,
   Tag,
-  Image
+  Image,
+  App
 } from 'antd';
 import {
   UploadOutlined,
@@ -30,6 +30,7 @@ const { Search } = Input;
 const { Dragger } = Upload;
 
 const FileManager = () => {
+  const { message } = App.useApp();
   const { isConnected, uploadFile, deleteFile, listFiles, getFileUrl, downloadFile } = useOSS();
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);

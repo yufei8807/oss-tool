@@ -4,7 +4,6 @@ import {
   Form,
   Input,
   Button,
-  message,
   Space,
   Divider,
   Alert,
@@ -15,7 +14,9 @@ import {
   List,
   Modal,
   Popconfirm,
-  Radio
+  Radio,
+  Empty,
+  App
 } from 'antd';
 import {
   SaveOutlined,
@@ -28,7 +29,9 @@ import {
   DeleteOutlined,
   CopyOutlined,
   LogoutOutlined,
-  UserOutlined
+  UserOutlined,
+  DownloadOutlined,
+  UploadOutlined
 } from '@ant-design/icons';
 import { useOSS } from '../contexts/OSSContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -38,6 +41,7 @@ const { Title, Paragraph, Text } = Typography;
 const { TextArea } = Input;
 
 const Settings = () => {
+  const { message, modal } = App.useApp();
   const { 
     ossConfigs, 
     currentConfigId, 
@@ -47,12 +51,37 @@ const Settings = () => {
     addConfig,
     updateConfig,
     deleteConfig,
-    switchConfig
+    switchConfig,
+    clearAllConfigs,
+    importConfigs
   } = useOSS();
   const { currentUser, logout } = useAuth();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingConfig, setEditingConfig] = useState(null);
   const [modalForm] = Form.useForm();
+
+  // 安全地重置表单
+  const safeResetForm = () => {
+    try {
+      modalForm.resetFields();
+    } catch (error) {
+      console.warn('Form reset failed:', error);
+    }
+  };
+
+  // 组件卸载时关闭对话框
+  useEffect(() => {
+    return () => {
+      setModalVisible(false);
+      setEditingConfig(null);
+    };
+  }, []);
+
+  // 当组件重新挂载时（tab切换回来时）确保对话框状态正确
+  useEffect(() => {
+    // 这个effect会在每次组件挂载时运行
+    // 如果需要在tab切换时关闭对话框，可以在这里处理
+  }, []);
 
   // 处理退出登录
   const handleLogout = () => {
@@ -91,8 +120,11 @@ const Settings = () => {
   // 打开添加配置模态框
   const handleAddConfig = () => {
     setEditingConfig(null);
-    modalForm.resetFields();
     setModalVisible(true);
+    // 延迟重置表单，确保模态框已经打开
+    setTimeout(() => {
+      safeResetForm();
+    }, 0);
   };
 
   // 打开编辑配置模态框
@@ -150,6 +182,143 @@ const Settings = () => {
     }
   };
 
+  // 导出配置到文件
+  const handleExportConfig = () => {
+    try {
+      const configData = {
+        configs: ossConfigs,
+        currentConfigId: currentConfigId,
+        exportTime: new Date().toISOString(),
+        version: '1.0'
+      };
+      
+      const jsonString = JSON.stringify(configData, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `oss-configs-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      message.success('配置导出成功');
+    } catch (error) {
+      message.error('配置导出失败: ' + error.message);
+    }
+  };
+
+  // 从文件导入配置
+  const handleImportConfig = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = (event) => {
+      const file = event.target.files[0];
+      if (!file) {
+        message.warning('请选择一个配置文件');
+        return;
+      }
+      
+      // 检查文件类型
+      if (!file.name.toLowerCase().endsWith('.json')) {
+        message.error('请选择JSON格式的配置文件');
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          console.log('开始解析配置文件...');
+          const configData = JSON.parse(e.target.result);
+          console.log('配置文件解析成功:', configData);
+          
+          // 验证配置文件格式
+          if (!configData.configs || !Array.isArray(configData.configs)) {
+            throw new Error('配置文件格式不正确，缺少configs数组');
+          }
+          
+          if (configData.configs.length === 0) {
+            throw new Error('配置文件中没有找到任何配置');
+          }
+          
+          // 验证每个配置的必要字段
+          for (let i = 0; i < configData.configs.length; i++) {
+            const config = configData.configs[i];
+            if (!config.name || !config.region || !config.accessKeyId || !config.accessKeySecret || !config.bucket) {
+              throw new Error(`第${i + 1}个配置项缺少必要字段（name, region, accessKeyId, accessKeySecret, bucket）`);
+            }
+          }
+          
+          modal.confirm({
+             title: '确认导入配置',
+             content: (
+               <div>
+                 <p>检测到 <strong>{configData.configs.length}</strong> 个配置：</p>
+                 <ul style={{ marginTop: 8, paddingLeft: 20 }}>
+                   {configData.configs.slice(0, 3).map((config, index) => (
+                     <li key={index}>{config.name} ({config.region})</li>
+                   ))}
+                   {configData.configs.length > 3 && <li>...还有{configData.configs.length - 3}个配置</li>}
+                 </ul>
+                 <p style={{ marginTop: 12, color: '#ff4d4f' }}>导入后将覆盖当前所有配置，是否继续？</p>
+               </div>
+             ),
+             onOk: async () => {
+               try {
+                 console.log('开始导入配置...');
+                 message.loading('正在导入配置...', 0);
+                 
+                 console.log('清空现有配置...');
+                 clearAllConfigs();
+                 
+                 // 添加短暂延迟确保状态更新
+                 await new Promise(resolve => setTimeout(resolve, 100));
+                 
+                 console.log('导入新配置:', configData.configs);
+                 importConfigs(configData.configs, configData.currentConfigId);
+                 
+                 console.log('配置导入完成');
+                 
+                 // 关闭loading消息
+                 message.destroy();
+                 message.success(`成功导入 ${configData.configs.length} 个配置`);
+                 
+                 // 强制刷新页面状态
+                 setTimeout(() => {
+                   window.location.reload();
+                 }, 1000);
+               } catch (error) {
+                 message.destroy();
+                 console.error('Import error:', error);
+                 message.error('配置导入失败: ' + error.message);
+               }
+             },
+             onCancel: () => {
+               message.info('已取消导入');
+             }
+           });
+        } catch (error) {
+          console.error('Parse error:', error);
+          if (error instanceof SyntaxError) {
+            message.error('配置文件不是有效的JSON格式');
+          } else {
+            message.error('配置文件解析失败: ' + error.message);
+          }
+        }
+      };
+      
+      reader.onerror = () => {
+        message.error('文件读取失败，请重试');
+      };
+      
+      reader.readAsText(file, 'UTF-8');
+    };
+    input.click();
+  };
+
 
 
   return (
@@ -187,21 +356,44 @@ const Settings = () => {
       {/* 配置列表 */}
       <Card 
         title={
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-            <span>OSS 配置管理</span>
-            <Space>
-              <Button 
-                type="primary" 
-                size="small"
-                icon={<PlusOutlined />} 
-                onClick={handleAddConfig}
-              >
-                添加配置
-              </Button>
-              <Text type="secondary" style={{ fontSize: '12px' }}>
-                {ossConfigs.length > 0 ? `${ossConfigs.length} 个配置` : '暂无配置'}
-              </Text>
-            </Space>
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', padding: '4px 0' }}>
+              <span>OSS 配置管理</span>
+              <Space>
+                <Text type="secondary" style={{ fontSize: '12px' }}>
+                  {ossConfigs.length > 0 ? `${ossConfigs.length} 个配置` : '暂无配置'}
+                </Text>
+                <Button 
+                  type="primary" 
+                  size="small"
+                  icon={<PlusOutlined />} 
+                  onClick={handleAddConfig}
+                >
+                  添加配置
+                </Button>
+              </Space>
+            </div>
+            <div>
+              <Space size="small">
+                <Button 
+                  size="small"
+                  icon={<DownloadOutlined />} 
+                  onClick={handleExportConfig}
+                  disabled={ossConfigs.length === 0}
+                  title="导出当前所有配置到文件"
+                >
+                  导出配置
+                </Button>
+                <Button 
+                  size="small"
+                  icon={<UploadOutlined />} 
+                  onClick={handleImportConfig}
+                  title="从文件导入配置"
+                >
+                  导入配置
+                </Button>
+              </Space>
+            </div>
           </div>
         } 
         className="file-list-card"
@@ -230,13 +422,12 @@ const Settings = () => {
                     onConfirm={() => handleDeleteConfig(config.id)}
                     okText="确定"
                     cancelText="取消"
-                    disabled={ossConfigs.length === 1}
                   >
                     <Button
                       type="text"
                       danger
                       icon={<DeleteOutlined />}
-                      disabled={ossConfigs.length === 1}
+                      title="删除配置"
                     />
                   </Popconfirm>
                 ]}
@@ -351,7 +542,7 @@ const Settings = () => {
         onCancel={() => {
           setModalVisible(false);
           setEditingConfig(null);
-          modalForm.resetFields();
+          safeResetForm();
         }}
         footer={null}
         width={600}
@@ -433,7 +624,7 @@ const Settings = () => {
                 onClick={() => {
                   setModalVisible(false);
                   setEditingConfig(null);
-                  modalForm.resetFields();
+                  safeResetForm();
                 }}
               >
                 取消
