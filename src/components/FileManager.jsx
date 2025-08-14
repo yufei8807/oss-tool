@@ -11,9 +11,10 @@ import {
   Input,
   Popconfirm,
   Tag,
-  Image,
-  App
+  App,
+  Typography
 } from 'antd';
+
 import {
   UploadOutlined,
   DeleteOutlined,
@@ -22,12 +23,25 @@ import {
   ReloadOutlined,
   SearchOutlined,
   FileOutlined,
-  PictureOutlined
+  PictureOutlined,
+  FileTextOutlined,
+  FilePdfOutlined,
+  PlayCircleOutlined,
+  SoundOutlined,
+  FileZipOutlined,
+  CodeOutlined,
+  FileMarkdownOutlined,
+  FileExcelOutlined,
+  FileWordOutlined,
+  FilePptOutlined,
+  AppleOutlined
 } from '@ant-design/icons';
 import { useOSS } from '../contexts/OSSContext';
+import FilePreview from './FilePreview';
 
 const { Search } = Input;
 const { Dragger } = Upload;
+const { Text } = Typography;
 
 const FileManager = () => {
   const { message } = App.useApp();
@@ -39,6 +53,7 @@ const FileManager = () => {
   const [previewVisible, setPreviewVisible] = useState(false);
   const [previewFile, setPreviewFile] = useState(null);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+
 
   // 获取文件列表
   const fetchFiles = async (forceRefresh = false) => {
@@ -107,7 +122,7 @@ const FileManager = () => {
   };
 
   // 预览文件
-  const handlePreview = (file) => {
+  const handlePreview = async (file) => {
     try {
       const url = getFileUrl(file.name);
       setPreviewFile({ ...file, url });
@@ -126,10 +141,124 @@ const FileManager = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  // 判断是否为图片文件
-  const isImageFile = (fileName) => {
-    const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
-    return imageExtensions.some(ext => fileName.toLowerCase().endsWith(ext));
+  // 判断文件类型
+  const getFileType = (fileName) => {
+    const ext = fileName.toLowerCase();
+    
+    // 图片文件
+    if (['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg'].some(e => ext.endsWith(e))) {
+      return 'image';
+    }
+    
+    // Markdown文件
+    if (['.md', '.markdown'].some(e => ext.endsWith(e))) {
+      return 'markdown';
+    }
+    
+    // Excel文件
+    if (['.xlsx', '.xls', '.xlsm', '.xlsb'].some(e => ext.endsWith(e))) {
+      return 'excel';
+    }
+    
+    // Word文件
+    if (['.docx', '.doc', '.docm', '.dotx', '.dotm'].some(e => ext.endsWith(e))) {
+      return 'word';
+    }
+    
+    // PowerPoint文件
+    if (['.pptx', '.ppt', '.pptm', '.potx', '.potm', '.ppsx', '.ppsm'].some(e => ext.endsWith(e))) {
+      return 'powerpoint';
+    }
+    
+    // Apple Pages文件
+    if (ext.endsWith('.pages')) {
+      return 'pages';
+    }
+    
+    // Apple Numbers文件
+    if (ext.endsWith('.numbers')) {
+      return 'numbers';
+    }
+    
+    // Apple Keynote文件
+    if (ext.endsWith('.keynote')) {
+      return 'keynote';
+    }
+    
+    // 文本文件
+    if (['.txt', '.json', '.xml', '.csv', '.log'].some(e => ext.endsWith(e))) {
+      return 'text';
+    }
+    
+    // 代码文件
+    if (['.js', '.jsx', '.ts', '.tsx', '.html', '.css', '.scss', '.less', '.vue', '.py', '.java', '.cpp', '.c', '.php', '.go', '.rs', '.rb', '.swift', '.kt', '.dart', '.sql', '.yaml', '.yml'].some(e => ext.endsWith(e))) {
+      return 'code';
+    }
+    
+    // PDF文件
+    if (ext.endsWith('.pdf')) {
+      return 'pdf';
+    }
+    
+    // 视频文件
+    if (['.mp4', '.avi', '.mov', '.wmv', '.flv', '.webm', '.mkv'].some(e => ext.endsWith(e))) {
+      return 'video';
+    }
+    
+    // 音频文件
+    if (['.mp3', '.wav', '.flac', '.aac', '.ogg', '.m4a'].some(e => ext.endsWith(e))) {
+      return 'audio';
+    }
+    
+    // 压缩文件
+    if (['.zip', '.rar', '.7z', '.tar', '.gz', '.bz2'].some(e => ext.endsWith(e))) {
+      return 'archive';
+    }
+    
+    return 'other';
+  };
+  
+  // 获取文件图标
+  const getFileIcon = (fileName) => {
+    const fileType = getFileType(fileName);
+    const iconStyle = { fontSize: '24px' };
+    
+    switch (fileType) {
+      case 'image':
+        return <PictureOutlined style={{ ...iconStyle, color: '#1890ff' }} />;
+      case 'markdown':
+        return <FileMarkdownOutlined style={{ ...iconStyle, color: '#0969da' }} />;
+      case 'excel':
+        return <FileExcelOutlined style={{ ...iconStyle, color: '#217346' }} />;
+      case 'word':
+        return <FileWordOutlined style={{ ...iconStyle, color: '#2b579a' }} />;
+      case 'powerpoint':
+        return <FilePptOutlined style={{ ...iconStyle, color: '#d24726' }} />;
+      case 'pages':
+      case 'numbers':
+      case 'keynote':
+        return <AppleOutlined style={{ ...iconStyle, color: '#007aff' }} />;
+      case 'text':
+        return <FileTextOutlined style={{ ...iconStyle, color: '#52c41a' }} />;
+      case 'code':
+        return <CodeOutlined style={{ ...iconStyle, color: '#722ed1' }} />;
+      case 'pdf':
+        return <FilePdfOutlined style={{ ...iconStyle, color: '#f5222d' }} />;
+      case 'video':
+        return <PlayCircleOutlined style={{ ...iconStyle, color: '#fa541c' }} />;
+      case 'audio':
+        return <SoundOutlined style={{ ...iconStyle, color: '#eb2f96' }} />;
+      case 'archive':
+        return <FileZipOutlined style={{ ...iconStyle, color: '#faad14' }} />;
+      default:
+        return <FileOutlined style={{ ...iconStyle, color: '#666' }} />;
+    }
+  };
+  
+  // 判断是否可以预览
+  const canPreview = (fileName) => {
+    const fileType = getFileType(fileName);
+    return ['image', 'markdown', 'excel', 'word', 'powerpoint', 'pages', 'numbers', 'keynote', 'text', 'code', 'pdf', 'video', 'audio'].includes(fileType);
   };
 
   // 过滤文件
@@ -204,6 +333,8 @@ const FileManager = () => {
                       type="text"
                       icon={<EyeOutlined />}
                       onClick={() => handlePreview(file)}
+                      disabled={!canPreview(file.name)}
+                      title={canPreview(file.name) ? '预览' : '此文件类型不支持预览'}
                     />,
                     <Button
                       type="text"
@@ -225,13 +356,7 @@ const FileManager = () => {
                   ]}
                 >
                   <List.Item.Meta
-                    avatar={
-                      isImageFile(file.name) ? (
-                        <PictureOutlined style={{ fontSize: '24px', color: '#1890ff' }} />
-                      ) : (
-                        <FileOutlined style={{ fontSize: '24px', color: '#666' }} />
-                      )
-                    }
+                    avatar={getFileIcon(file.name)}
                     title={file.name}
                     description={
                       <Space>
@@ -260,22 +385,15 @@ const FileManager = () => {
             关闭
           </Button>
         ]}
-        width={800}
+        width={900}
+        style={{ top: 20 }}
       >
         {previewFile && (
-          <div style={{ textAlign: 'center' }}>
-            {isImageFile(previewFile.name) ? (
-              <Image
-                src={previewFile.url}
-                alt={previewFile.name}
-                style={{ maxWidth: '100%', maxHeight: '500px' }}
-              />
-            ) : (
-              <div>
-                <FileOutlined style={{ fontSize: '64px', color: '#666' }} />
-                <p>此文件类型不支持预览，请下载后查看</p>
-              </div>
-            )}
+          <div style={{ maxHeight: '70vh', overflow: 'auto' }}>
+            <FilePreview 
+              file={previewFile} 
+              fileType={getFileType(previewFile.name)} 
+            />
           </div>
         )}
       </Modal>
