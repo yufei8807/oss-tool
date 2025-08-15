@@ -4,10 +4,22 @@
 
 ## 功能特性
 
+<img width="260" height="562" alt="image" src="https://github.com/user-attachments/assets/0d55a132-8907-41e8-97a1-0f1a4983fd6e" />
+<img width="260" height="562" alt="image" src="https://github.com/user-attachments/assets/93666f9b-020a-45f4-92c5-72f3ad5576a3" />
+<img width="260" height="562" alt="image" src="https://github.com/user-attachments/assets/d9328f63-eadf-4d95-b2d0-03e6e9caf52b" />
+
 ### 📁 文件管理
 - 文件上传（支持拖拽上传）
 - 文件下载
-- 文件预览（图片文件）
+- 多格式文件预览
+  - 图片文件（JPG、PNG、GIF、WebP、SVG 等）
+  - Markdown 文件（.md、.markdown）
+  - 文本和代码文件（.txt、.js、.css、.html、.json 等）
+  - PDF 文档
+  - 视频文件（MP4、WebM、OGG）
+  - 音频文件（MP3、WAV、OGG）
+  - Office 文档（Excel、Word、PowerPoint）
+  - Apple 文档（Pages、Numbers、Keynote）
 - 文件删除
 - 文件搜索
 - 文件列表展示
@@ -34,6 +46,8 @@
 - **图标库**: @ant-design/icons
 - **OSS SDK**: ali-oss
 - **路由**: react-router-dom
+- **Markdown 渲染**: marked
+- **文件预览**: 内置多格式预览组件
 
 ## 快速开始
 
@@ -83,7 +97,14 @@ npm run preview
 在「文件管理」页面可以：
 - 拖拽或点击上传文件
 - 查看文件列表
-- 预览图片文件
+- 多格式文件预览
+  - **图片预览**: 支持常见图片格式的直接预览
+  - **Markdown 预览**: 渲染 Markdown 文件为 HTML 格式
+  - **文本/代码预览**: 语法高亮显示各种代码文件
+  - **PDF 预览**: 内嵌 PDF 查看器
+  - **媒体预览**: 支持视频和音频文件播放
+  - **Office 文档**: 通过 Microsoft Office 在线预览服务查看 Excel、Word、PowerPoint 文件
+  - **Apple 文档**: 提示用户在 Mac 设备上打开 Pages、Numbers、Keynote 文件
 - 下载文件到本地
 - 删除不需要的文件
 - 搜索特定文件
@@ -129,6 +150,7 @@ npm run preview
 src/
 ├── components/          # 组件目录
 │   ├── FileManager.jsx  # 文件管理组件
+│   ├── FilePreview.jsx  # 文件预览组件
 │   ├── Gallery.jsx      # 相册组件
 │   └── Settings.jsx     # 设置组件
 ├── contexts/            # Context 目录
@@ -147,7 +169,8 @@ src/
   "antd": "^5.x",
   "ali-oss": "^6.x",
   "@ant-design/icons": "^5.x",
-  "react-router-dom": "^6.x"
+  "react-router-dom": "^6.x",
+  "marked": "^12.x"
 }
 ```
 
